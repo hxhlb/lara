@@ -20,7 +20,9 @@ jobs:
           bash scripts/build_ipa.sh
 
       - name: authenticate gh cli
-        uses: actions/setup-gh@v2
+        uses: cli/gh-actions@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: delete previous 'latest' release if it exists
         run: |
