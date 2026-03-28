@@ -2,12 +2,14 @@
 a beautiful kexploit.
 
 ## support
-Currently tested on iOS 18.0 - 18.6.2.
+Currently tested on iOS 17.5 - 18.6.2.
 If you run lara on your device, and it ends up working, please contact me on [discord](https://discord.com/users/919268666305024010) and tell me:
 1. your device
 2. your iOS version
 4. what you tested in lara (eg. Run Exploit, Init KFS, etc.)
 5. your logs
+
+If lara doesnt work on your device, and you want to help the project, please also provide your logs and iOS version.
 
 ## features:
 ### implemented:
