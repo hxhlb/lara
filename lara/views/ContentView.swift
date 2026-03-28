@@ -8,14 +8,13 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-
 struct ContentView: View {
     @ObservedObject private var mgr = laramgr.shared
     @State private var uid: uid_t = getuid()
     @State private var pid: pid_t = getpid()
     @State private var hasoffsets = haskernproc()
     @State private var showresetalert = false
-    @State private var pacSelfTestResult: Bool? = nil
+    @State private var downloadingkernelcache = false
     
     var body: some View {
         NavigationStack {
@@ -23,13 +22,17 @@ struct ContentView: View {
                 if !hasoffsets {
                     Section("Kernelcache") {
                         Button("Download Kernelcache") {
+                            guard !downloadingkernelcache else { return }
+                            downloadingkernelcache = true
                             DispatchQueue.global(qos: .userInitiated).async {
                                 let ok = dlkerncache()
                                 DispatchQueue.main.async {
                                     hasoffsets = ok
+                                    downloadingkernelcache = false
                                 }
                             }
                         }
+                        .disabled(downloadingkernelcache)
                     }
                 } else {
                     Section("Kernel Read Write") {
