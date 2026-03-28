@@ -90,9 +90,21 @@ struct FontPicker: View {
                         Text("Segoe UI")
                             .font(viewfont(resource: "segoeui", size: 17))
                     }
-
                 } header: {
                     Text("Fonts")
+                } footer: {
+                    Text("Fira Sans currently broken. If you want to fix it, create a pull request or something.")
+                }
+                
+                Section {
+                    Text(globallogger.logs.last ?? "No logs yet")
+                        .font(.system(size: 13, design: .monospaced))
+                    
+                    if #available(iOS 18.2, *) {
+                        Button("Respring") {
+                            mgr.respring()
+                        }
+                    }
                 }
             }
             .navigationTitle("Font Overwrite")

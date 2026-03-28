@@ -4,8 +4,8 @@
 //
 //  Created by ruter on 23.03.26.
 //
+
 import SwiftUI
-import notify
 import UniformTypeIdentifiers
 
 
@@ -142,8 +142,10 @@ struct ContentView: View {
                     }
                     
                     Section {
-                        Button("Respring") {
-                            notify_post("com.apple.springboard.toggleLockScreen")
+                        if #available(iOS 18.2, *) {
+                            Button("Respring") {
+                                mgr.respring()
+                            }
                         }
                         
                         Button("Panic!") {
