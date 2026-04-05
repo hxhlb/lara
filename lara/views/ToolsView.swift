@@ -66,6 +66,16 @@ struct ToolsView: View {
             } header: {
                 Text("proc")
             }
+            
+            Section {
+                Button {
+                    gettoken()
+                } label: {
+                    Text("Issue Token")
+                }
+            } header: {
+                Text("Sandbox")
+            }
         }
         .navigationTitle("Tools")
     }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Darwin
 
 struct WhitelistView: View {
     @ObservedObject private var mgr = laramgr.shared
@@ -54,20 +55,18 @@ struct WhitelistView: View {
                     Text("Overwrites MobileIdentityData blacklist files with an empty plist.")
                 }
 
-                if 1 == 2 {
-                    ForEach(files) { f in
-                        Section {
-                            ScrollView {
-                                Text(contents[f.path] ?? "(not loaded)")
-                                    .font(.system(.body, design: .monospaced))
-                                    .textSelection(.enabled)
-                            }
-                            .frame(minHeight: 120)
-                        } header: {
-                            Text(f.name)
-                        } footer: {
-                            Text(f.path)
+                ForEach(files) { f in
+                    Section {
+                        ScrollView {
+                            Text(contents[f.path] ?? "(not loaded)")
+                                .font(.system(size: 13, design: .monospaced))
+                                .textSelection(.enabled)
                         }
+                        .frame(minHeight: 120)
+                    } header: {
+                        Text(f.name)
+                    } footer: {
+                        Text(f.path)
                     }
                 }
             }
@@ -111,21 +110,22 @@ struct WhitelistView: View {
         patching = true
         defer { patching = false }
 
-        let emptyPlist = """
-        [
-            
-        ]
-        """
-
-        guard let data = emptyPlist.data(using: .utf8) else {
+        guard let data = try? PropertyListSerialization.data(
+            fromPropertyList: [:],
+            format: .xml,
+            options: 0
+        ) else {
             status = "failed to build empty plist"
             return
         }
 
         var failures: [String] = []
+
         for f in files {
-            let ok = sbxwrite(path: f.path, data: data)
-            if !ok { failures.append(f.name) }
+            let result = sbxwrite(path: f.path, data: data)
+            if !result.hasPrefix("ok") {
+                failures.append("\(f.name): \(result)")
+            }
         }
 
         if failures.isEmpty {
@@ -150,14 +150,22 @@ struct WhitelistView: View {
         }
     }
 
-    private func sbxwrite(path: String, data: Data) -> Bool {
-        do {
-            let url = URL(fileURLWithPath: path)
-            try data.write(to: url, options: .atomic)
-            return true
-        } catch {
-            return false
+    private func sbxwrite(path: String, data: Data) -> String {
+        let fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+        if fd == -1 {
+            return "open failed: errno=\(errno) \(String(cString: strerror(errno)))"
         }
+        defer { close(fd) }
+
+        let result = data.withUnsafeBytes { ptr in
+            write(fd, ptr.baseAddress, ptr.count)
+        }
+
+        if result == -1 {
+            return "write failed: errno=\(errno) \(String(cString: strerror(errno)))"
+        }
+
+        return "ok (\(result) bytes)"
     }
 
     private func render(data: Data) -> String {

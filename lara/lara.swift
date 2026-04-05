@@ -17,9 +17,12 @@ struct lara: App {
     @State private var selectedtab: Int = 1
     private let keepalivekey = "keepalive"
     @AppStorage("showfmintabs") private var showfmintabs: Bool = true
-    @AppStorage("selectedmethod") private var selectedmethod: method = .vfs
+    @AppStorage("selectedmethod") private var selectedmethod: method = .sbx
 
     init() {
+        if UserDefaults.standard.string(forKey: "selectedmethod") == nil {
+            UserDefaults.standard.set(method.sbx.rawValue, forKey: "selectedmethod")
+        }
         if g_isunsupported {
             showunsupported = true
         }

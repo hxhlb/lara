@@ -22,14 +22,22 @@ struct PasscodeKey: Identifiable {
 struct PasscodeView: View {
     @ObservedObject var mgr: laramgr
     
-    @State private var selectedTelephony: String = "TelephonyUI-10"
     @State private var selectedKeys: [String: Data] = [:]
     @State private var showImagePicker: String?
     @State private var showFilePicker = false
     @State private var processing = false
     @State private var statusMessage: String = ""
     
-    let telephonyOptions = ["TelephonyUI-10", "TelephonyUI-9", "TelephonyUI-8"]
+    let telephonyOptions = [
+        "TelephonyUI-15",
+        "TelephonyUI-14",
+        "TelephonyUI-13",
+        "TelephonyUI-12",
+        "TelephonyUI-11",
+        "TelephonyUI-10",
+        "TelephonyUI-9",
+        "TelephonyUI-8"
+    ]
     
     let passcodeKeys: [PasscodeKey] = [
         PasscodeKey(id: "0", digit: "0", displayName: "0"),
@@ -42,49 +50,55 @@ struct PasscodeView: View {
         PasscodeKey(id: "7", digit: "7", displayName: "7"),
         PasscodeKey(id: "8", digit: "8", displayName: "8"),
         PasscodeKey(id: "9", digit: "9", displayName: "9"),
-        PasscodeKey(id: "delete", digit: "delete", displayName: "⌫"),
-        PasscodeKey(id: "cancel", digit: "cancel", displayName: "✕"),
+    ]
+
+    private var passcodeKeyMap: [String: PasscodeKey] {
+        Dictionary(uniqueKeysWithValues: passcodeKeys.map { ($0.id, $0) })
+    }
+
+    private let passcodeKeyLayout: [String?] = [
+        "1", "2", "3",
+        "4", "5", "6",
+        "7", "8", "9",
+        nil, "0", nil
     ]
     
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Telephony Version", selection: $selectedTelephony) {
-                        ForEach(telephonyOptions, id: \.self) { option in
-                            Text(option).tag(option)
-                        }
-                    }
-                } footer: {
-                    Text("Select your iOS version's TelephonyUI folder")
-                }
-                
-                Section("Import Theme") {
-                    Button("Import .passthm / .zip File") {
+                Section(header: Text("Import Theme")) {
+                    Button {
                         showFilePicker = true
+                    } label: {
+                        Label("Import .passthm / .zip File", systemImage: "square.and.arrow.down")
                     }
-                }
-                
-                Section("Passcode Key Images") {
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
-                        ForEach(passcodeKeys) { key in
-                            PasscodeKeyButton(
-                                key: key,
-                                imageData: selectedKeys[key.id],
-                                onSelect: {
-                                    showImagePicker = key.id
-                                }
-                            )
-                        }
-                    }
-                    .padding(.vertical, 8)
                 }
                 
                 Section {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 0),
+                        GridItem(.flexible(), spacing: 0),
+                        GridItem(.flexible(), spacing: 0)
+                    ], spacing: 0) {
+                        ForEach(Array(passcodeKeyLayout.enumerated()), id: \.offset) { _, keyId in
+                            if let keyId, let key = passcodeKeyMap[keyId] {
+                                PasscodeKeyButton(
+                                    key: key,
+                                    imageData: selectedKeys[key.id],
+                                    onSelect: {
+                                        showImagePicker = key.id
+                                    }
+                                )
+                            } else {
+                                Color.clear
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                    }
+                }
+                
+                Section(header: Text("Apply")) {
                     Button("Apply Passcode Theme") {
                         applyTheme()
                     }
@@ -93,16 +107,19 @@ struct PasscodeView: View {
                     if !statusMessage.isEmpty {
                         Text(statusMessage)
                             .foregroundColor(statusMessage.contains("Error") ? .red : .green)
+                            .font(.footnote)
                     }
                 }
                 
-                Section {
+                Section(header: Text("Danger Zone")) {
                     Button("Clear All Keys", role: .destructive) {
                         selectedKeys.removeAll()
                     }
                 }
             }
+            .headerProminence(.increased)
             .navigationTitle("Passcode Theme")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(item: $showImagePicker) { keyId in
                 ImagePicker(imageData: $selectedKeys[keyId])
             }
@@ -197,15 +214,15 @@ struct PasscodeView: View {
     func matchFilenameToKey(_ filename: String) -> String? {
         let lowercased = filename.lowercased()
         
-        if lowercased.contains("other-2-delete") || lowercased.contains("delete--dark") {
-            return "delete"
-        }
-        if lowercased.contains("other-2-cancel") || lowercased.contains("cancel--dark") || lowercased.contains("other-2-close") {
-            return "cancel"
-        }
-        
         for i in 0...9 {
-            if lowercased.contains("other-2-\(i)--dark") || lowercased.contains("-\(i)-") || lowercased.contains("/\(i).png") || lowercased.contains("/\(i).jpg") {
+            if lowercased.contains("other-2-\(i)--dark") ||
+                lowercased.contains("-\(i)-") ||
+                lowercased.contains("-\(i)@") ||
+                lowercased.contains("_\(i)_") ||
+                lowercased.contains("_\(i)@") ||
+                lowercased.contains("/\(i).png") ||
+                lowercased.contains("/\(i).jpg") ||
+                lowercased.contains("/\(i).jpeg") {
                 return String(i)
             }
         }
@@ -214,8 +231,8 @@ struct PasscodeView: View {
     }
     
     func applyTheme() {
-        guard mgr.vfsready else {
-            statusMessage = "Error: VFS not ready"
+        guard mgr.sbxready else {
+            statusMessage = "Error: SBX not ready"
             return
         }
         
@@ -237,7 +254,7 @@ struct PasscodeView: View {
                 let filename = getFilenameForKey(keyId)
                 let targetPath = "\(basePath)/\(filename)"
                 
-                if mgr.vfsoverwritewithdata(target: targetPath, data: imageData) {
+                if sbxwrite(path: targetPath, data: imageData) {
                     successCount += 1
                     mgr.logmsg("Applied \(filename) to \(targetPath)")
                 } else {
@@ -258,16 +275,17 @@ struct PasscodeView: View {
     }
 
     func resolveTelephonyBasePath() -> String? {
-        let candidates = [
-            "/var/mobile/Library/Caches/\(selectedTelephony)",
-            "/var/mobile/Library/Caches/com.apple.\(selectedTelephony)",
-            "/var/mobile/Library/Caches/com.apple.\(selectedTelephony.lowercased())",
-            "/var/mobile/Library/Caches/com.apple.TelephonyUI/\(selectedTelephony)",
-            "/var/mobile/Library/Caches/com.apple.telephonyui/\(selectedTelephony)"
-        ]
+        var candidates: [String] = []
+        for version in telephonyOptions {
+            candidates.append("/var/mobile/Library/Caches/\(version)")
+            candidates.append("/var/mobile/Library/Caches/com.apple.\(version)")
+            candidates.append("/var/mobile/Library/Caches/com.apple.\(version.lowercased())")
+            candidates.append("/var/mobile/Library/Caches/com.apple.TelephonyUI/\(version)")
+            candidates.append("/var/mobile/Library/Caches/com.apple.telephonyui/\(version)")
+        }
 
         for path in candidates {
-            if mgr.vfslistdir(path: path) != nil {
+            if sbxdirExists(path: path) {
                 mgr.logmsg("TelephonyUI cache: \(path)")
                 return path
             }
@@ -275,6 +293,20 @@ struct PasscodeView: View {
 
         mgr.logmsg("TelephonyUI cache not found. Tried: \(candidates.joined(separator: ", "))")
         return nil
+    }
+
+    func sbxdirExists(path: String) -> Bool {
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
+    }
+
+    func sbxwrite(path: String, data: Data) -> Bool {
+        do {
+            try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
     
     func getFilenameForKey(_ keyId: String) -> String {
@@ -293,27 +325,22 @@ struct PasscodeKeyButton: View {
     
     var body: some View {
         Button(action: onSelect) {
-            VStack(spacing: 4) {
-                if let data = imageData, let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 50, height: 70)
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
+            GeometryReader { geo in
+                ZStack {
+                    if let data = imageData, let uiImage = UIImage(data: data) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.width)
+                            .clipped()
+                    } else {
+                        Rectangle()
                             .fill(Color.gray.opacity(0.2))
-                        Text(key.displayName)
-                            .font(.title)
-                            .foregroundColor(.secondary)
                     }
-                    .frame(width: 50, height: 70)
                 }
-                
-                Text(key.displayName)
-                    .font(.caption)
-                    .foregroundColor(.primary)
+                .frame(width: geo.size.width, height: geo.size.width)
             }
+            .aspectRatio(1, contentMode: .fit)
         }
         .buttonStyle(.plain)
     }

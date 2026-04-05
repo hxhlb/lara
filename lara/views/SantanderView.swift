@@ -13,7 +13,7 @@ import QuickLook
 
 struct SantanderView: View {
     let startPath: String
-    @AppStorage("selectedmethod") private var selectedmethod: method = .vfs
+    @State private var selectedmethod: method = .sbx
     @ObservedObject private var mgr = laramgr.shared
 
     init(startPath: String = "/") {
@@ -39,12 +39,25 @@ struct SantanderView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .onAppear {
+            refreshSelectedMethod()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            refreshSelectedMethod()
+        }
+    }
+
+    private func refreshSelectedMethod() {
+        if let raw = UserDefaults.standard.string(forKey: "selectedmethod"),
+           let m = method(rawValue: raw) {
+            selectedmethod = m
+        }
     }
 }
 
 struct SantanderBrowserSheet: UIViewControllerRepresentable {
     let startPath: String
-    @AppStorage("selectedmethod") private var selectedmethod: method = .vfs
+    @State private var selectedmethod: method = .sbx
 
     func makeUIViewController(context: Context) -> UINavigationController {
         let useSBX = (selectedmethod == .sbx)
@@ -52,7 +65,12 @@ struct SantanderBrowserSheet: UIViewControllerRepresentable {
         return UINavigationController(rootViewController: root)
     }
 
-    func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {
+        if let raw = UserDefaults.standard.string(forKey: "selectedmethod"),
+           let m = method(rawValue: raw) {
+            selectedmethod = m
+        }
+    }
 }
 
 struct SantanderPath: Hashable {
@@ -81,11 +99,19 @@ struct SantanderPath: Hashable {
 }
 
 final class SantanderPathListViewController: UITableViewController, UISearchResultsUpdating, UISearchBarDelegate {
+    private struct ClipboardItem {
+        let path: String
+        let isDirectory: Bool
+        let name: String
+    }
+
+    private static var clipboard: ClipboardItem?
+
     private var unfilteredContents: [SantanderPath]
     private var renderedContents: [SantanderPath]
     private let currentPath: SantanderPath
     private let useSBX: Bool
-    private let initialEmptyStateMessage: String?
+    private var initialEmptyStateMessage: String?
     private var isSearching = false
     private var displayHiddenFiles = true
 
@@ -135,6 +161,27 @@ final class SantanderPathListViewController: UITableViewController, UISearchResu
             return "This File Manager is very unreliable and overall shitty. For more information, look at the info button. \nIT MAY DISPLAY INACCURATE INFORMATION!"
         }
         return nil
+    }
+
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        let item = renderedContents[indexPath.row]
+        return UIContextMenuConfiguration(actionProvider: { [weak self] _ in
+            guard let self else { return UIMenu() }
+            let copyAction = UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { [weak self] _ in
+                self?.copyItem(item)
+            }
+            let replaceAction = UIAction(
+                title: "Replace With Clipboard",
+                image: UIImage(systemName: "doc.on.clipboard"),
+                attributes: (Self.clipboard == nil || !self.useSBX) ? [.disabled] : []
+            ) { [weak self] _ in
+                self?.replaceItem(item)
+            }
+            let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                self?.confirmDelete(item)
+            }
+            return UIMenu(children: [copyAction, replaceAction, deleteAction])
+        })
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -202,7 +249,7 @@ final class SantanderPathListViewController: UITableViewController, UISearchResu
             return loadDirectoryContentsSBX(for: path)
         }
 
-        guard mgr.vfsready else { return ([], "VFS not ready.") }
+        guard mgr.vfsready else { return ([], "Not ready.") }
         guard let entries = mgr.vfslistdir(path: path.path) else {
             return ([], "Unable to list directory.")
         }
@@ -264,6 +311,20 @@ final class SantanderPathListViewController: UITableViewController, UISearchResu
     }
 
     private func makeRightBarButton() -> UIMenu {
+        let pasteAction = UIAction(
+            title: "Paste",
+            image: UIImage(systemName: "doc.on.clipboard"),
+            attributes: (Self.clipboard == nil || !useSBX) ? [.disabled] : []
+        ) { [weak self] _ in
+            self?.pasteClipboardItem()
+        }
+        let pasteReplaceAction = UIAction(
+            title: "Paste (Replace)",
+            image: UIImage(systemName: "doc.on.clipboard.fill"),
+            attributes: (Self.clipboard == nil || !useSBX) ? [.disabled] : []
+        ) { [weak self] _ in
+            self?.pasteClipboardItem(replaceExisting: true)
+        }
         let sortAZ = UIAction(title: "Sort A-Z", image: UIImage(systemName: "textformat")) { [weak self] _ in
             guard let self else { return }
             self.unfilteredContents.sort { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
@@ -292,7 +353,7 @@ final class SantanderPathListViewController: UITableViewController, UISearchResu
         let sortMenu = UIMenu(title: "Sort by..", image: UIImage(systemName: "arrow.up.arrow.down"), children: [sortAZ, sortZA])
         let viewMenu = UIMenu(title: "View", image: UIImage(systemName: "eye"), children: [toggleHidden])
         let goMenu = UIMenu(title: "Go to..", image: UIImage(systemName: "arrow.right"), children: [goRoot, goHome])
-        return UIMenu(children: [sortMenu, viewMenu, goMenu])
+        return UIMenu(children: [pasteAction, pasteReplaceAction, sortMenu, viewMenu, goMenu])
     }
 
     func updateSearchResults(for searchController: UISearchController) {
@@ -342,6 +403,130 @@ final class SantanderPathListViewController: UITableViewController, UISearchResu
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+
+    private func copyItem(_ item: SantanderPath) {
+        Self.clipboard = ClipboardItem(path: item.path, isDirectory: item.isDirectory, name: item.lastPathComponent)
+        let alert = UIAlertController(title: "Copied", message: item.lastPathComponent, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+        setRightBarButton()
+    }
+
+    private func pasteClipboardItem(replaceExisting: Bool = false) {
+        guard useSBX else {
+            let alert = UIAlertController(title: "Paste Unavailable", message: "Paste is only supported in SBX mode.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        guard let clip = Self.clipboard else { return }
+
+        let destDir = currentPath.path
+        if clip.isDirectory {
+            if destDir == clip.path || destDir.hasPrefix(clip.path + "/") {
+                let alert = UIAlertController(title: "Paste Failed", message: "Cannot paste a folder into itself.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                present(alert, animated: true)
+                return
+            }
+        }
+
+        let baseDest = (destDir as NSString).appendingPathComponent(clip.name)
+        let dest = replaceExisting ? baseDest : uniqueDestinationPath(base: baseDest)
+
+        do {
+            if replaceExisting && FileManager.default.fileExists(atPath: dest) {
+                try FileManager.default.removeItem(atPath: dest)
+            }
+            try FileManager.default.copyItem(atPath: clip.path, toPath: dest)
+            reloadContents()
+        } catch {
+            let alert = UIAlertController(title: "Paste Failed", message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
+
+    private func uniqueDestinationPath(base: String) -> String {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: base) { return base }
+
+        let dir = (base as NSString).deletingLastPathComponent
+        let file = (base as NSString).lastPathComponent
+        let ext = (file as NSString).pathExtension
+        let stem = ext.isEmpty ? file : (file as NSString).deletingPathExtension
+
+        var i = 1
+        while true {
+            let suffix = i == 1 ? " copy" : " copy \(i)"
+            let newName = ext.isEmpty ? "\(stem)\(suffix)" : "\(stem)\(suffix).\(ext)"
+            let candidate = (dir as NSString).appendingPathComponent(newName)
+            if !fm.fileExists(atPath: candidate) { return candidate }
+            i += 1
+        }
+    }
+
+    private func reloadContents() {
+        let listing = Self.loadDirectoryContents(for: currentPath, useSBX: useSBX)
+        unfilteredContents = listing.items
+        initialEmptyStateMessage = listing.emptyStateMessage
+        applyFilters(query: navigationItem.searchController?.searchBar.text ?? "")
+    }
+
+    private func confirmDelete(_ item: SantanderPath) {
+        let alert = UIAlertController(title: "Delete", message: "Delete \(item.lastPathComponent)?", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.deleteItem(item)
+        })
+        present(alert, animated: true)
+    }
+
+    private func deleteItem(_ item: SantanderPath) {
+        guard useSBX else {
+            let alert = UIAlertController(title: "Delete Unavailable", message: "Delete is only supported in SBX mode.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        do {
+            try FileManager.default.removeItem(atPath: item.path)
+            reloadContents()
+        } catch {
+            let alert = UIAlertController(title: "Delete Failed", message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
+
+    private func replaceItem(_ item: SantanderPath) {
+        guard useSBX else {
+            let alert = UIAlertController(title: "Replace Unavailable", message: "Replace is only supported in SBX mode.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        guard let clip = Self.clipboard else { return }
+        if clip.isDirectory {
+            if item.path == clip.path || item.path.hasPrefix(clip.path + "/") {
+                let alert = UIAlertController(title: "Replace Failed", message: "Cannot replace with a folder into itself.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                present(alert, animated: true)
+                return
+            }
+        }
+        do {
+            if FileManager.default.fileExists(atPath: item.path) {
+                try FileManager.default.removeItem(atPath: item.path)
+            }
+            try FileManager.default.copyItem(atPath: clip.path, toPath: item.path)
+            reloadContents()
+        } catch {
+            let alert = UIAlertController(title: "Replace Failed", message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+    }
 }
 
 final class SantanderFileReaderViewController: UIViewController, QLPreviewControllerDataSource {
@@ -352,6 +537,9 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
     private var playerVC: AVPlayerViewController?
     private var tempURL: URL?
     private var tempSize: Int64 = 0
+    private var isEditingFile = false
+    private var isEditableText = false
+    private var editButton: UIBarButtonItem?
 
     init(path: SantanderPath, useSBX: Bool) {
         self.path = path
@@ -367,6 +555,7 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
         view.backgroundColor = .systemBackground
 
         textView.isEditable = false
+        textView.alwaysBounceVertical = true
         textView.alwaysBounceVertical = true
         textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         textView.textColor = .label
@@ -391,10 +580,21 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
             imageView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
 
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(title: "Preview", style: .plain, target: self, action: #selector(showPreview)),
-            UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(showShare))
-        ]
+        if usingSBX {
+            let edit = UIBarButtonItem(title: "Edit", style: .plain, target: self, action: #selector(toggleEdit))
+            edit.isEnabled = false
+            editButton = edit
+            navigationItem.rightBarButtonItems = [
+                edit,
+                UIBarButtonItem(title: "Preview", style: .plain, target: self, action: #selector(showPreview)),
+                UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(showShare))
+            ]
+        } else {
+            navigationItem.rightBarButtonItems = [
+                UIBarButtonItem(title: "Preview", style: .plain, target: self, action: #selector(showPreview)),
+                UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(showShare))
+            ]
+        }
 
         loadFile()
     }
@@ -440,7 +640,9 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
                 textView.text = "Failed to read file."
                 return
             }
-            textView.text = render(data: data)
+            let rendered = render(data: data)
+            textView.text = rendered.text
+            setEditableText(rendered.isUtf8)
             return
         }
 
@@ -482,7 +684,38 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
             textView.text = "Failed to read file."
             return
         }
-        textView.text = render(data: data)
+        let rendered = render(data: data)
+        textView.text = rendered.text
+    }
+
+    @objc private func toggleEdit() {
+        guard usingSBX, isEditableText else { return }
+        if isEditingFile {
+            saveEdits()
+        } else {
+            isEditingFile = true
+            textView.isEditable = true
+            textView.becomeFirstResponder()
+            editButton?.title = "Save"
+        }
+    }
+
+    private func saveEdits() {
+        let data = Data(textView.text.utf8)
+        do {
+            try data.write(to: URL(fileURLWithPath: path.path), options: .atomic)
+            isEditingFile = false
+            textView.isEditable = false
+            textView.resignFirstResponder()
+            editButton?.title = "Edit"
+            let alert = UIAlertController(title: "Saved", message: "File updated.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        } catch {
+            let alert = UIAlertController(title: "Save Failed", message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
     }
 
     private func readFileSBX(maxBytes: Int) -> Data? {
@@ -503,16 +736,21 @@ final class SantanderFileReaderViewController: UIViewController, QLPreviewContro
         return nil
     }
 
-    private func render(data: Data) -> String {
+    private func render(data: Data) -> (text: String, isUtf8: Bool) {
         if let s = String(data: data, encoding: .utf8) {
-            return s
+            return (s, true)
         }
         let maxBytes = min(data.count, 8192)
         let hex = data.prefix(maxBytes).map { String(format: "%02x", $0) }.joined(separator: " ")
         if data.count > maxBytes {
-            return hex + "\n... (" + String(data.count) + " bytes total)"
+            return (hex + "\n... (" + String(data.count) + " bytes total)", false)
         }
-        return hex
+        return (hex, false)
+    }
+
+    private func setEditableText(_ editable: Bool) {
+        isEditableText = editable
+        editButton?.isEnabled = editable
     }
 
     @objc private func showPreview() {

@@ -197,17 +197,18 @@ struct ContentView: View {
                                     }
                                 }
                                 
-                                NavigationLink("3 App Bypass") {
+                                NavigationLink("3 App Bypass (Broken?)") {
                                     AppsView(mgr: mgr)
                                 }
                                 
+                                NavigationLink("Unblacklist (Broken?)") {
+                                    WhitelistView()
+                                }
+                                
                                 if 1 == 2 {
+                                    
                                     NavigationLink("Passcode Theme") {
                                         PasscodeView(mgr: mgr)
-                                    }
-
-                                    NavigationLink("Unblacklist") {
-                                        WhitelistView()
                                     }
 
                                     NavigationLink("MobileGestalt") {
