@@ -209,7 +209,7 @@ struct ContentView: View {
                                     CardView()
                                 }
                                 
-                                NavigationLink("3 App Bypass (Broken?)") {
+                                NavigationLink("3 App Bypass") {
                                     AppsView(mgr: mgr)
                                 }
                                 
