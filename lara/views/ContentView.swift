@@ -389,7 +389,7 @@ struct ContentView: View {
                     } header: {
                         Text("RemoteCall")
                     } footer: {
-                        Text("Broken. Do not create issues or ask for support regarding this feature.")
+                        Text("hopefully not broken anymore, but still useless. -baconmania")
                     }
                     #endif
                     
