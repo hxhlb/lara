@@ -76,6 +76,7 @@ If lara doesnt work on your device, and you want to help the project, please als
 - ui is buggy on 17.x
 - doesnt work on ipad m1-m4?
 - .aea ota updates do not work.
+- card overwrite seems to only overwrite one card.
 
 ### fixes:
 kernelcache download fix:
