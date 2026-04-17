@@ -87,7 +87,7 @@ kernelcache download fix:
 4. Navigate to the extracted folder:<br>
 `cd /path/to/ipsw_3.1.671_something_something/`
 5. Extract the kernel:
-./ipsw extract --kernel <drag your ipsw here>
+./ipsw extract --kernel [drag your ipsw here]
 6. Get the kernelcache file.
 7. Transfer the kernelcache to your iPhone.
 8. In the Files app:
