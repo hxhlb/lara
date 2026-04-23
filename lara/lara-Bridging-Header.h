@@ -14,6 +14,8 @@
 #import "rc.h"
 #import "RemoteCall.h"
 
+long FindCacheDataOffset(const char *mgKey);
+
 void test(NSString *path);
 
 NS_ASSUME_NONNULL_BEGIN
