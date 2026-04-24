@@ -141,7 +141,7 @@ struct LGView: View {
     private func gpkeybinding<T: Equatable>(_ key: String, type: T.Type = Bool.self, default: T? = false, enable: T? = true) -> Binding<Bool> {
         return Binding(
             get: {
-                if let value = gp[keys] as? T?, let enable {
+                if let value = gp[key] as? T?, let enable {
                     return value == enable
                 }
                 return false
