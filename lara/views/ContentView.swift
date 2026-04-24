@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var showsettings = false
     @State private var selectedmethod: method = .hybrid
 
+    static let os = ProcessInfo().operatingSystemVersion
+
     var body: some View {
         NavigationStack {
             List {
