@@ -84,8 +84,8 @@ If lara doesnt work on your device, and you want to help the project, please als
 - Upside Down
 - Floating Dock (Broken)
 - Grid App Switcher
-- Performance
-- JIT
+- Performance HUD
+- JIT Enabler (only for apps with `get-task-allow`)
 
 ### coming soon
 
