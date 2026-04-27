@@ -144,7 +144,7 @@ struct ToolsView: View {
 
             Section {
                 Button {
-                    if await mgr.PPHelper() {
+                    if mgr.PPHelper() {
                         status = "Succeeded. Open the Pocket Poster app, open settings and tap Detect."
                     } else {
                         status = "Failed. Check logs."
