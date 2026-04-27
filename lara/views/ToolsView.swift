@@ -145,15 +145,15 @@ struct ToolsView: View {
 
             Section {
                 Button {
-                    PPRunning = true
                     Task {
+                        PPRunning = true
                         if await mgr.PPHelper() {
                             status = "Succeeded. Open the Pocket Poster app, open settings and tap Detect."
                         } else {
                             status = "Failed. Check logs."
                         }
+                        PPRunning = false
                     }
-                    PPRunning = false
                 } label: {
                     Text("Pocket Poster Helper")
                 }
