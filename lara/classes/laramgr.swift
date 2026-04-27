@@ -455,7 +455,7 @@ final class laramgr: ObservableObject {
     }
 
     // inspired by nugget from leminlimez
-    func PPHelper() async -> Bool {
+    func PPHelper() -> Bool {
         do {
             let fm = FileManager.default
             let dataFolder = "/private/var/mobile/Containers/Data/Application"
