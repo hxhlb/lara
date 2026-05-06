@@ -79,7 +79,7 @@ struct ContentView: View {
     }
     
     private var KRWSection: some View {
-        Section(header: HeaderLabel(text: "Kernel Read Write", icon: "wrench.and.screwdriver"), footer: Text(isdebugged() ? "Not available while a debugger is attached." : "Depending on your device configuration, this may not function properly.")) {
+        Section(header: HeaderLabel(text: "Kernel Read Write", icon: "wrench.and.screwdriver"), footer: Text(LocalizedStringKey(isdebugged() ? "Not available while a debugger is attached." : "Depending on your device configuration, this may not function properly."))) {
             if hasOffsets {
                 PlainAlert(title: "Kernelcache offsets missing!", icon: "exclamationmark.triangle.fill", text: "lara needs to download kernelcache offsets in order for the exploit to function properly. Download them in settings.")
             } else {
@@ -91,7 +91,7 @@ struct ContentView: View {
                         if mgr.dsready {
                             ButtonLabel(text: "Exploit Successful", icon: "checkmark")
                         } else if mgr.dsrunning {
-                            ButtonLabel(text: "Running Exploit... (\(Int(mgr.dsprogress * 100))%)", icon: "showMeProgressPlease")
+                            ButtonLabel(text: String(localized: "Running Exploit...") + " (\(Int(mgr.dsprogress * 100))%)", icon: "showMeProgressPlease")
                         } else if mgr.dsattempted && mgr.dsfailed {
                             ButtonLabel(text: "Exploit Failed!", icon: "xmark")
                         } else {
@@ -127,7 +127,7 @@ struct ContentView: View {
                             if mgr.vfsready {
                                 ButtonLabel(text: "VFS Initialized", icon: "checkmark")
                             } else if mgr.vfsrunning {
-                                ButtonLabel(text: "Initializing VFS... (\(Int(mgr.vfsprogress * 100))%)", icon: "showMeProgressPlease")
+                                ButtonLabel(text: String(localized: "Initializing VFS...") + " (\(Int(mgr.vfsprogress * 100))%)", icon: "showMeProgressPlease")
                             } else if mgr.vfsattempted && mgr.vfsfailed {
                                 ButtonLabel(text: "VFS Failed!", icon: "xmark")
                             } else {

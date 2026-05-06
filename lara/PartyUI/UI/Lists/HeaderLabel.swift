@@ -8,11 +8,11 @@
 import SwiftUI
 
 public struct HeaderLabel: View {
-    var text: String
+    var text: LocalizedStringKey
     var icon: String
     
     public init(text: String, icon: String) {
-        self.text = text
+        self.text = LocalizedStringKey(text)
         self.icon = icon
     }
     

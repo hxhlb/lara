@@ -12,7 +12,7 @@ public enum ToggleInfoType: Codable {
 }
 
 public struct PlatterToggle: View {
-    var text: String
+    var text: LocalizedStringKey
     var icon: String
     var color: Color
     var infoType: ToggleInfoType
@@ -23,7 +23,7 @@ public struct PlatterToggle: View {
     @Binding var isOn: Bool
     
     public init(text: String, icon: String = "", color: Color = Color.accentColor, infoType: ToggleInfoType = .none, infoTitle: String = "Information", infoMessage: String = "", minSupportedVersion: Double = 0.0, maxSupportedVersion: Double = 100.0, isOn: Binding<Bool>) {
-        self.text = text
+        self.text = LocalizedStringKey(text)
         self.icon = icon
         self.color = color
         self.infoType = infoType
@@ -61,4 +61,3 @@ public struct PlatterToggle: View {
         }
     }
 }
-

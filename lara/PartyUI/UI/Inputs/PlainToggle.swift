@@ -8,7 +8,7 @@
 import SwiftUI
 
 public struct PlainToggle: View {
-    var text: String
+    var text: LocalizedStringKey
     var icon: String
     var infoType: ToggleInfoType
     var infoTitle: String
@@ -18,7 +18,7 @@ public struct PlainToggle: View {
     @Binding var isOn: Bool
     
     public init(text: String, icon: String = "", infoType: ToggleInfoType = .none, infoTitle: String = "Information", infoMessage: String = "", minSupportedVersion: Double = 0.0, maxSupportedVersion: Double = 100.0, isOn: Binding<Bool>) {
-        self.text = text
+        self.text = LocalizedStringKey(text)
         self.icon = icon
         self.infoType = infoType
         self.infoTitle = infoTitle
@@ -52,4 +52,3 @@ public struct PlainToggle: View {
         }
     }
 }
-

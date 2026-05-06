@@ -51,7 +51,7 @@ struct ToolsView: View {
                     
                     Spacer()
                     
-                    Text(isaslr ? "enabled" : "disabled")
+                    Text(LocalizedStringKey(isaslr ? "enabled" : "disabled"))
                         .foregroundColor(isaslr ? Color.red : Color.green)
                         .monospaced()
                     
@@ -145,9 +145,9 @@ struct ToolsView: View {
             Section {
                 Button {
                     if mgr.PPHelper() {
-                        status = "Succeeded. Open the Pocket Poster app, open settings and tap Detect."
+                        status = String(localized: "Succeeded. Open the Pocket Poster app, open settings and tap Detect.")
                     } else {
-                        status = "Failed. Check logs."
+                        status = String(localized: "Failed. Check logs.")
                     }
                 } label: {
                     Text("Pocket Poster Helper")

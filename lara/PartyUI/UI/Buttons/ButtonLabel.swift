@@ -8,12 +8,12 @@
 import SwiftUI
 
 public struct ButtonLabel: View {
-    var text: String
+    var text: LocalizedStringKey
     var icon: String
     var useImage: Bool
     
     public init(text: String, icon: String, useImage: Bool = false) {
-        self.text = text
+        self.text = LocalizedStringKey(text)
         self.icon = icon
         self.useImage = useImage
     }

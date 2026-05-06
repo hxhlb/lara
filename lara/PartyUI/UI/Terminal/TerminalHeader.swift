@@ -8,16 +8,16 @@
 import SwiftUI
 
 public struct TerminalHeader: View {
-    var text: String
+    var text: LocalizedStringKey
     var icon: String
     var color: Color
-    var context: String
+    var context: LocalizedStringKey?
     
     public init(text: String, icon: String, color: Color = Color(.label), context: String = "") {
-        self.text = text
+        self.text = LocalizedStringKey(text)
         self.icon = icon
         self.color = color
-        self.context = context
+        self.context = context.isEmpty ? nil : LocalizedStringKey(context)
     }
     
     public var body: some View {
@@ -36,7 +36,7 @@ public struct TerminalHeader: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
             }
-            if !context.isEmpty {
+            if let context {
                 Text(context)
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
