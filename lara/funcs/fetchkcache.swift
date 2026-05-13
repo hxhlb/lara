@@ -19,12 +19,12 @@ func larakcpath() -> String? {
 
 func fetchkcache() -> Bool {
     guard let kcpath = syskcpath() else {
-        print("failed to get kernelcache path")
+        globallogger.log("(fetchkcache) failed to get kernelcache path")
         return false
     }
 
     guard let outpath = larakcpath() else {
-        print("failed to get output path")
+        globallogger.log("(fetchkcache) failed to get output path")
         return false
     }
 

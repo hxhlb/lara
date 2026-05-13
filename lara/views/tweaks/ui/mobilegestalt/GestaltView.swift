@@ -14,14 +14,17 @@ import SwiftUI
 let mgCurrentPath = "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
 
 struct GestaltView: View {
+    @AppStorage("gestaltwarn") private var gestaltwarn: Bool = true
+    @AppStorage("mgDeviceName") private var mgDeviceName: String = ""
+    
     @EnvironmentObject private var mgr: laramgr
     @State private var mgCurrentDict: NSMutableDictionary = NSMutableDictionary()
     @State private var isGestaltVaild: Bool = false
     
+    @State private var showgestaltwarn: Bool = false
     @State private var mgSubtype: Int = 0
     @State private var mgOriginalSubtype: Int = 0
     @State private var mgEnableDeviceName: Bool = false
-    @AppStorage("mgDeviceName") private var mgDeviceName: String = ""
     @State private var mgProductType: String = ""
     
     @State private var mgShowFileSheet: Bool = false
@@ -163,9 +166,21 @@ struct GestaltView: View {
             }
             .onAppear {
                 loadCurrentGestalt()
+                
+                if gestaltwarn {
+                    showgestaltwarn = true
+                }
             }
             .sheet(isPresented: $mgShowFileSheet) {
                 GestaltFileView()
+            }
+            .alert("Warning", isPresented: $showgestaltwarn) {
+                Button("Alright.", role: .cancel) {
+                    showgestaltwarn = false
+                    gestaltwarn = false
+                }
+            } message: {
+                Text("This stuff is risky! You may temporarily break your device, cause it to crash, or even bootloop. Dont say I didnt warn you.")
             }
         }
     }

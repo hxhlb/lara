@@ -10,28 +10,23 @@ import Foundation
 func getbmhash() -> String? {
     let path = "/private/preboot"
     let fm = FileManager.default
-
     let regex = try! NSRegularExpression(pattern: "^[A-Fa-f0-9]{64,128}$")
 
-    guard let enumerator = fm.enumerator(atPath: path) else { return nil }
+    guard let enumerator = fm.enumerator(atPath: path) else {
+        globallogger.log("(getbmhash) failed to enumerate path: \(path)")
+        return nil
+    }
 
     for case let file as String in enumerator {
-        let full = (path as NSString).appendingPathComponent(file)
+        let name = (file as NSString).lastPathComponent
+        let range = NSRange(name.startIndex..<name.endIndex, in: name)
 
-        guard let content = try? String(contentsOfFile: full) else {
-            continue
-        }
-
-        let lines = content.split(whereSeparator: \.isNewline)
-
-        for line in lines {
-            let range = NSRange(line.startIndex..<line.endIndex, in: line)
-
-            if regex.firstMatch(in: String(line), range: range) != nil {
-                return String(line)
-            }
+        if regex.firstMatch(in: name, range: range) != nil {
+            globallogger.log("(getbmhash) matching hash found: \(name)")
+            return name
         }
     }
 
+    globallogger.log("(getbmhash) no matching hash found")
     return nil
 }

@@ -107,7 +107,9 @@ struct ContentView: View {
                     }
                 } label: {
                     if dlingkcache {
-                        LabeledContent("Fetching Kernelcache...") {
+                        HStack {
+                            Text("Fetching Kernelcache...")
+                            Spacer()
                             ProgressView()
                         }
                     } else {
