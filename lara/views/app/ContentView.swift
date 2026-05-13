@@ -16,6 +16,7 @@ struct ContentView: View {
     @AppStorage("loggerNoBS") private var loggernobs: Bool = true
     
     @State private var showSettings: Bool = false
+    @State private var dlingkcache: Bool = false
     
     init() {
         globallogger.capture()
@@ -55,10 +56,7 @@ struct ContentView: View {
     private var AlertsSection: some View {
         Section {
             if !mgr.hasOffsets {
-                PlainAlert(title: "No offsets found!", icon: "exclamationmark.triangle.fill", text: "Kernelcache offsets are missing. Go download them in settings.")
-                Button("Open Settings", action: {
-                    showSettings.toggle()
-                })
+                PlainAlert(title: "No offsets found!", icon: "exclamationmark.triangle.fill", text: "Kernelcache offsets are missing. Click \"Run Exploit\" and then fetch the offsets.")
             }
         }
     }
@@ -84,66 +82,101 @@ struct ContentView: View {
                 .disabled(mgr.dsready || mgr.dsrunning || isdebugged())
             }
             
-            if selectedmethod == .hybrid {
-                LabeledContent(content: {
-                    if mgr.vfsready && mgr.sbxready {
-                        Image(systemName: "checkmark.circle")
-                    } else if mgr.vfsrunning || mgr.sbxrunning {
-                        HStack {
-                            Text("Running...")
+            if !mgr.hasOffsets {
+                Button {
+                    guard !dlingkcache else { return }
+                    dlingkcache = true
+
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let fetched = fetchkcache()
+
+                        if fetched {
+                            DispatchQueue.main.async {
+                                mgr.hasOffsets = true
+                                dlingkcache = false
+                            }
+                            return
+                        }
+
+                        let dlkc = dlkcache()
+
+                        DispatchQueue.main.async {
+                            mgr.hasOffsets = dlkc
+                            dlingkcache = false
+                        }
+                    }
+                } label: {
+                    if dlingkcache {
+                        LabeledContent("Fetching Kernelcache...") {
                             ProgressView()
                         }
-                    } else if (mgr.vfsattempted && mgr.vfsfailed) || (mgr.sbxattempted && mgr.sbxfailed) {
-                        Image(systemName: "xmark.circle")
+                    } else {
+                        Text("Fetch Kernelcache")
                     }
-                }) {
-                    Button("Initialize System", action: {
-                        mgr.vfsinit()
-                        mgr.sbxescape()
-                    })
-                    .disabled(!mgr.hasOffsets || !mgr.dsready || mgr.vfsrunning || mgr.sbxrunning || (mgr.vfsready && mgr.sbxready))
                 }
-            }
-            
-            // initalize vfs
-            if selectedmethod == .vfs {
-                LabeledContent(content: {
-                    if mgr.vfsready {
-                        Image(systemName: "checkmark.circle")
-                    } else if mgr.vfsrunning {
-                        HStack {
-                            Text("\(Int(mgr.dsprogress * 100))%")
-                            ProgressView()
+                .disabled(dlingkcache || !mgr.dsready)
+            } else {
+                if selectedmethod == .hybrid {
+                    LabeledContent(content: {
+                        if mgr.vfsready && mgr.sbxready {
+                            Image(systemName: "checkmark.circle")
+                        } else if mgr.vfsrunning || mgr.sbxrunning {
+                            HStack {
+                                Text("Running...")
+                                ProgressView()
+                            }
+                        } else if (mgr.vfsattempted && mgr.vfsfailed) || (mgr.sbxattempted && mgr.sbxfailed) {
+                            Image(systemName: "xmark.circle")
                         }
-                    } else if mgr.vfsattempted && mgr.vfsfailed {
-                        Image(systemName: "xmark.circle")
+                    }) {
+                        Button("Initialize System", action: {
+                            mgr.vfsinit()
+                            mgr.sbxescape()
+                        })
+                        .disabled(!mgr.hasOffsets || !mgr.dsready || mgr.vfsrunning || mgr.sbxrunning || (mgr.vfsready && mgr.sbxready))
                     }
-                }) {
-                    Button("Initialize VFS", action: {
-                        mgr.vfsinit()
-                    })
-                    .disabled(!mgr.dsready || mgr.vfsready || mgr.vfsrunning || isdebugged())
                 }
-            }
-            
-            // escape sandbox
-            if selectedmethod == .sbx {
-                LabeledContent(content: {
-                    if mgr.sbxready {
-                        Image(systemName: "checkmark.circle")
-                    } else if mgr.sbxrunning {
-                        HStack {
-                            Text("Running...")
-                            ProgressView()
+                
+                // initalize vfs
+                if selectedmethod == .vfs {
+                    LabeledContent(content: {
+                        if mgr.vfsready {
+                            Image(systemName: "checkmark.circle")
+                        } else if mgr.vfsrunning {
+                            HStack {
+                                Text("\(Int(mgr.dsprogress * 100))%")
+                                ProgressView()
+                            }
+                        } else if mgr.vfsattempted && mgr.vfsfailed {
+                            Image(systemName: "xmark.circle")
                         }
-                    } else if mgr.sbxattempted && mgr.sbxfailed {
-                        Image(systemName: "xmark.circle")
+                    }) {
+                        Button("Initialize VFS", action: {
+                            mgr.vfsinit()
+                        })
+                        .disabled(!mgr.dsready || mgr.vfsready || mgr.vfsrunning || isdebugged())
                     }
-                }) {
-                    Button("Escape Sandbox", action: {
-                        mgr.sbxescape()
-                    })
-                    .disabled(!mgr.dsready || mgr.sbxready || mgr.sbxrunning || isdebugged())
+                }
+                
+                // escape sandbox
+                if selectedmethod == .sbx {
+                    LabeledContent(content: {
+                        if mgr.sbxready {
+                            Image(systemName: "checkmark.circle")
+                        } else if mgr.sbxrunning {
+                            HStack {
+                                Text("Running...")
+                                ProgressView()
+                            }
+                        } else if mgr.sbxattempted && mgr.sbxfailed {
+                            Image(systemName: "xmark.circle")
+                        }
+                    }) {
+                        Button("Escape Sandbox", action: {
+                            mgr.sbxescape()
+                        })
+                        .disabled(!mgr.dsready || mgr.sbxready || mgr.sbxrunning || isdebugged())
+                    }
                 }
             }
         } header: {

@@ -70,6 +70,7 @@ struct SettingsView: View {
                 // kernelcache
                 Section {
                     if !mgr.hasOffsets {
+                        // this does not need to be here any longer, but i'll keep it here anyways.
                         Button {
                             guard !dlingkcache else { return }
                             dlingkcache = true
@@ -95,12 +96,12 @@ struct SettingsView: View {
                         } label: {
                             if dlingkcache {
                                 HStack {
-                                    Text("Downloading Kernelcache...")
+                                    Text("Fetching Kernelcache...")
                                     Spacer()
                                     ProgressView()
                                 }
                             } else {
-                                Text("Download Kernelcache")
+                                Text("Fetch Kernelcache")
                             }
                         }
                         .disabled(dlingkcache || !mgr.dsready)
@@ -120,7 +121,7 @@ struct SettingsView: View {
                         }
                     } else {
                         Button("Remove Kernelcache", action: {
-                            Alertinator.shared.alert(title: "Clear Kernelcache Data?", body: "This will delete all kernelcache data and remove saved offsets. You will have to redownload the data to use lara again.", actionLabel: "Confirm", action: {
+                            Alertinator.shared.alert(title: "Clear Kernelcache Data?", body: "This will delete all kernelcache data and remove saved offsets. You will have to refetch the data to use lara again.", actionLabel: "Confirm", action: {
                                 clearKcacheData()
                             })
                         })
@@ -130,9 +131,9 @@ struct SettingsView: View {
                     HeaderLabel(text: "Kernelcache", icon: "cpu")
                 } footer: {
                     if (!mgr.hasOffsets && (!mgr.dsready || (!mgr.vfsready && !mgr.sbxready))) {
-                        Text("NOTE: You need to Run the Exploit before you can download the Kernelcache.\n\nDeleting and redownloading kernelcache may fix some issues. Try doing this before opening a GitHub issue or asking for support in our [Discord](https://discord.gg/gw8PcRF3Jr) server.")
+                        Text("NOTE: You will have to click \"Run Exploit\" before you can fetch kernelcache.\n\nDeleting and refetching kernelcache may fix some issues. Try doing this before opening a GitHub issue or asking for support in our [Discord](https://discord.gg/gw8PcRF3Jr) server.")
                     } else {
-                        Text("Deleting and redownloading kernelcache may fix some issues. Try doing this before opening a GitHub issue or asking for support in our [Discord](https://discord.gg/gw8PcRF3Jr) server.")
+                        Text("Deleting and refetching kernelcache may fix some issues. Try doing this before opening a GitHub issue or asking for support in our [Discord](https://discord.gg/gw8PcRF3Jr) server.")
                     }
                 }
                 
