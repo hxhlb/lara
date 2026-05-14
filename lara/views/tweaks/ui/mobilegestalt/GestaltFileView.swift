@@ -5,9 +5,11 @@
 //  Created by lunginspector on 5/11/26.
 //
 
+import Darwin
 import SwiftUI
 
 struct GestaltFileView: View {
+    @ObservedObject private var mgr = laramgr.shared
     @State private var mgCurrentDict: NSMutableDictionary = NSMutableDictionary()
     @State private var mgCacheExtra: [String : Any] = [:]
     @Environment(\.dismiss) var dismiss
@@ -27,6 +29,15 @@ struct GestaltFileView: View {
                     Button("Export Current MobileGestalt", action: {
                         mgCurrentExport()
                     })
+                }
+
+                Section(header: HeaderLabel(text: "Danger Zone", icon: "exclamationmark.triangle"), footer: Text("Deletes the system MobileGestalt cache file and Lara's saved backup. A full device reboot is required so iOS can regenerate a clean MobileGestalt cache.")) {
+                    Button(role: .destructive) {
+                        confirmMobileGestaltCacheDeletion()
+                    } label: {
+                        Text("Delete MobileGestalt Cache")
+                    }
+                    .disabled(!mgr.sbxready)
                 }
                 
                 Section(header: HeaderLabel(text: "CacheExtra", icon: "doc")) {
@@ -53,6 +64,51 @@ struct GestaltFileView: View {
                     }
                 }
             }
+        }
+    }
+
+    func confirmMobileGestaltCacheDeletion() {
+        Alertinator.shared.alert(
+            title: "Delete MobileGestalt Cache?",
+            body: "This may cause system issues if used incorrectly. Lara will automatically exit after deleting the system MobileGestalt cache file to prevent creating a bad saved backup. Fully power off the device and turn it back on immediately after Lara exits. A respring is not enough.",
+            actionLabel: "Delete and Exit",
+            action: deleteMobileGestaltCache
+        )
+    }
+
+    func deleteMobileGestaltCache() {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            Alertinator.shared.alert(title: "Failed to Delete MobileGestalt Cache", body: "Could not locate Lara's Documents directory.")
+            return
+        }
+
+        let savedURL = documentsURL.appendingPathComponent("SavedGestalt.plist")
+        let filesystemURL = URL(fileURLWithPath: mgCurrentPath)
+        let fm = FileManager.default
+
+        var deletedCount = 0
+        var failures: [String] = []
+
+        for url in [filesystemURL, savedURL] {
+            do {
+                if fm.fileExists(atPath: url.path) {
+                    try fm.removeItem(at: url)
+                    deletedCount += 1
+                }
+            } catch {
+                failures.append("\(url.path): \(error.localizedDescription)")
+            }
+        }
+
+        if failures.isEmpty {
+            mgCurrentDict = NSMutableDictionary()
+            mgCacheExtra = [:]
+            print("(mg) deleted MobileGestalt cache files: \(deletedCount). Exiting so the user can fully reboot.")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                exit(0)
+            }
+        } else {
+            Alertinator.shared.alert(title: "Failed to Delete MobileGestalt Cache", body: failures.joined(separator: "\n"))
         }
     }
     
