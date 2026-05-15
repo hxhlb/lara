@@ -401,30 +401,26 @@ final class laramgr: ObservableObject {
                 return false
             }
     
-            for _ in 0..<5 {
-                let ok = path.withCString { vfs_zerofile($0) } == 0
-    
-                if !ok {
-                    self.logmsg("(vfs) zerofile failed")
-                    return false
-                }
+            let ok = path.withCString { vfs_zerofile($0) } == 0
+
+            if !ok {
+                self.logmsg("(vfs) zerofile failed")
+                return false
             }
-    
-            self.logmsg("(vfs) zeroed \(path) 5 times")
+            
+            self.logmsg("(vfs) zeroed \(path)")
             return true
         } else {
-            for _ in 0..<5 {
-                let result = path.withCString { cpath in
-                    vfs_zeropage(cpath, 0)
-                }
-    
-                if result != 0 {
-                    self.logmsg("(vfs) zeropage failed")
-                    return false
-                }
+            let result = path.withCString { cpath in
+                vfs_zeropage(cpath, 0)
+            }
+
+            if result != 0 {
+                self.logmsg("(vfs) zeropage failed")
+                return false
             }
     
-            self.logmsg("(vfs) zeroed first page of \(path) 5 times")
+            self.logmsg("(vfs) zeroed first page of \(path)")
             return true
         }
     }

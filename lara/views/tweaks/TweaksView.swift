@@ -40,7 +40,7 @@ struct TweaksView: View {
                 }
                 
                 Section(header: HeaderLabel(text: "User Interface", icon: "eye")) {
-                    NavigationLink("dirtyZero", destination: ZeroView(mgr: mgr))
+                    NavigationLink("dirtyZero", destination: dirtyZeroView())
                         .disabled(!mgr.vfsready)
                     NavigationLink("MobileGestalt", destination: GestaltView())
                         .disabled(!mgr.sbxready)
