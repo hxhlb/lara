@@ -86,8 +86,6 @@ Important Notes:
 - Grid App Switcher
 - Performance HUD
 - JIT Enabler (only for apps with `get-task-allow`)
-
-### Coming Soon
 - App Decrypt
 
 ## Known Issues

@@ -263,13 +263,12 @@ struct DecryptView: View {
             try? fm.removeItem(atPath: workDir)
             try? fm.createDirectory(atPath: payloadDir, withIntermediateDirectories: true)
 
-            do {
-                try fm.copyItem(atPath: app.bundlepath, toPath: destAppPath)
-            } catch {
+            cpdir(app.bundlepath, destAppPath)
+            guard fm.fileExists(atPath: destAppPath) else {
                 DispatchQueue.main.async {
                     decryptingbid = nil
-                    errormsg = "Failed to copy bundle: \(error.localizedDescription)"
-                    laramgr.shared.logmsg("(decrypt) copy failed: \(error.localizedDescription)")
+                    errormsg = "Failed to copy bundle. Some files may be inaccessible."
+                    laramgr.shared.logmsg("(decrypt) copy failed: could not copy \(app.bundlepath)")
                 }
                 return
             }
@@ -398,5 +397,36 @@ struct AppRow: View {
             }
         }
         .opacity(isdecrypting ? 0.6 : 1.0)
+    }
+}
+
+func cpdir(_ src: String, _ dst: String) {
+    var st = stat()
+    guard stat(src, &st) == 0 else { return }
+    if (st.st_mode & S_IFMT) != S_IFDIR {
+        let fd = open(src, O_RDONLY)
+        guard fd >= 0 else { return }
+        let size = lseek(fd, 0, SEEK_END)
+        lseek(fd, 0, SEEK_SET)
+        guard size > 0 else { close(fd); return }
+        guard let buf = malloc(Int(size)) else { close(fd); return }
+        let n = read(fd, buf, Int(size))
+        close(fd)
+        guard n == size else { free(buf); return }
+        let out = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644)
+        if out >= 0 {
+            write(out, buf, Int(size))
+            close(out)
+        }
+        free(buf)
+        return
+    }
+    mkdir(dst, 0755)
+    guard let items = try? FileManager.default.contentsOfDirectory(atPath: src) else {
+        laramgr.shared.logmsg("(decrypt) warning: could not read \((src as NSString).lastPathComponent)")
+        return
+    }
+    for item in items {
+        cpdir(src + "/" + item, dst + "/" + item)
     }
 }
